@@ -1,0 +1,132 @@
+# Production setup — multiple replicas, nginx load-balances between them.
+# Run with: docker compose -f docker-compose.prod.yml up -d --scale frontend=3 --scale backend=3
+
+networks:
+  public_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+  private_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.1.0/24
+    internal: false
+
+services:
+  nginx:
+    build: ./nginx
+    ports:
+      - "80:80"
+    networks:
+      - public_net
+      - private_net
+    depends_on:
+      - frontend
+      - backend
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  frontend:
+    build:
+      context: ./Client
+      dockerfile: Dockerfile
+    environment:
+      BACKEND_URL: http://nginx/api
+      API_SECRET: ${API_SECRET}
+      NEXT_PUBLIC_FRONTEND_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_FRONTEND_GOOGLE_CLIENT_ID}
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+      NEXT_PUBLIC_DOMAIN: ${NEXT_PUBLIC_DOMAIN}
+    networks:
+      - private_net
+    restart: always
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  backend:
+    build:
+      context: ./Server
+      dockerfile: Dockerfile
+    environment:
+      FRONTEND_SERVER_ORIGIN: ${FRONTEND_SERVER_ORIGIN}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_SUPPORT: ${SMTP_SUPPORT}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_SENDERNAME: ${SMTP_SENDERNAME}
+      SMTP_PASS: ${SMTP_PASS}
+      JWT_ENCRYPTION_KEY: ${JWT_ENCRYPTION_KEY}
+      API_SECRET: ${API_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
+      PORT: "3500"
+    networks:
+      - private_net
+    restart: always
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3500/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - private_net
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db_data:
+    driver: local

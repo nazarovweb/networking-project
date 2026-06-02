@@ -1,0 +1,118 @@
+# Local development — single replica per service, hot reload enabled.
+# Uses a dedicated Docker network to simulate VPC isolation.
+
+networks:
+  public_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24   # Simulates public subnet (ALB tier)
+  private_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.1.0/24   # Simulates private subnet (app + DB tier)
+    internal: false
+
+services:
+  # ─── Load Balancer (simulates ALB) ──────────────────────────────────────────
+  nginx:
+    build: ./nginx
+    container_name: wholesale-lb
+    ports:
+      - "80:80"
+    networks:
+      - public_net
+      - private_net
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+  # ─── Frontend ────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./Client
+      dockerfile: Dockerfile
+    container_name: wholesale-frontend
+    environment:
+      BACKEND_URL: ${BACKEND_URL:-http://backend:3500}
+      API_SECRET: ${API_SECRET}
+      NEXT_PUBLIC_FRONTEND_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_FRONTEND_GOOGLE_CLIENT_ID}
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+      NEXT_PUBLIC_DOMAIN: ${NEXT_PUBLIC_DOMAIN:-localhost}
+    networks:
+      - private_net
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ─── Backend API ─────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./Server
+      dockerfile: Dockerfile
+    container_name: wholesale-backend
+    environment:
+      FRONTEND_SERVER_ORIGIN: ${FRONTEND_SERVER_ORIGIN:-http://localhost}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASS: ${DB_PASS:-postgres}
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:-ecommerce}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_SUPPORT: ${SMTP_SUPPORT}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_SENDERNAME: ${SMTP_SENDERNAME}
+      SMTP_PASS: ${SMTP_PASS}
+      JWT_ENCRYPTION_KEY: ${JWT_ENCRYPTION_KEY}
+      API_SECRET: ${API_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
+      PORT: "3500"
+    networks:
+      - private_net
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3500/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ─── Database ─────────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: wholesale-db
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASS:-postgres}
+      POSTGRES_DB: ${DB_NAME:-ecommerce}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      # ecommerce.sql is a pg_dump custom-format file — restore with:
+      # docker compose exec db pg_restore -U postgres -d ecommerce /tmp/ecommerce.sql
+      # docker compose cp ecommerce.sql db:/tmp/ecommerce.sql
+    networks:
+      - private_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-ecommerce}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db_data:
+    driver: local

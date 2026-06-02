@@ -1,0 +1,22 @@
+# Copy this file to terraform.tfvars and fill in your values.
+# NEVER commit terraform.tfvars to git (it contains secrets).
+
+aws_region    = "eu-west-1"
+project_name  = "wholesale"
+key_pair_name    = "wholesale-key"   # Name of the key pair you created in EC2 console
+github_username  = "your-github-username"
+
+db_name     = "ecommerce"
+db_username = "wholesale_admin"
+db_password = "ChangeMe_Min16Chars!"
+
+jwt_secret = "your-jwt-secret-at-least-32-chars-long"
+api_secret = "your-api-secret-at-least-32-chars-long"
+
+# Optional — leave empty if not used yet
+smtp_host              = "smtp.gmail.com"
+smtp_user              = "your@gmail.com"
+smtp_pass              = "your-app-password"
+google_client_id       = ""
+google_client_secret   = ""
+stripe_publishable_key = ""

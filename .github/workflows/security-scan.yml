@@ -1,0 +1,51 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 2 * * 1"   # Every Monday at 02:00 UTC
+
+jobs:
+  trivy-scan:
+    name: Trivy Container Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy on frontend Dockerfile
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "./Client"
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
+
+      - name: Run Trivy on backend Dockerfile
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "./Server"
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
+
+  dependency-audit:
+    name: npm Dependency Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Audit frontend dependencies
+        working-directory: ./Client
+        run: npm audit --audit-level=high
+
+      - name: Audit backend dependencies
+        working-directory: ./Server
+        run: npm audit --audit-level=high
