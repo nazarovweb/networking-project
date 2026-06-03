@@ -9,6 +9,7 @@ import productCheckout from './routes/productCheckout'
 import cartCheckout from './routes/cartCheckout'
 import homeData from './routes/homeData'
 import support from './routes/support'
+import admin from './routes/admin'
 import { authRateLimiterMiddleware } from './middleware/rateLimit';
 const router = express.Router();
 router.use('/user/signup', authRateLimiterMiddleware);
@@ -27,4 +28,5 @@ router.use('/',productCheckout);
 router.use('/',cartCheckout);
 router.use('/',homeData);
 router.use('/',support);
+router.use('/',admin);
 export default router;
