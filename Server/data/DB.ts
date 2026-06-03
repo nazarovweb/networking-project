@@ -1,15 +1,18 @@
 import { Pool } from 'pg';
 import 'dotenv/config';
 
+const isRDS = (process.env.DB_HOST || '').includes('rds.amazonaws.com');
+
 const client = new Pool({
   user: process.env.DB_USER || '',
   password: process.env.DB_PASS || '',
   host: process.env.DB_HOST || '',
   port: parseInt(process.env.DB_PORT || '5432', 10),
   database: process.env.DB_NAME || '',
-  max: 10,                // maximum pool size
+  max: 10,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 5000,
+  ssl: isRDS ? { rejectUnauthorized: false } : false,
 });
 
 const connectDB = async () => {
