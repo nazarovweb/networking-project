@@ -39,7 +39,7 @@ router.post("/create/cart-payment/create-payment-intent",userIDSchema, async (re
     const data = matchedData(req);
     const userID = data.userID;
     // Create a PaymentIntent with the order amount and currency
-    const paymentIntent =  await stripe.paymentIntents.create({
+    const paymentIntent =  await stripe!.paymentIntents.create({
       amount: await calculateCartAmount(userID),
       currency: "usd",
       // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
