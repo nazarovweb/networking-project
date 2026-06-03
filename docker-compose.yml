@@ -64,7 +64,7 @@ services:
       FRONTEND_SERVER_ORIGIN: ${FRONTEND_SERVER_ORIGIN:-http://localhost}
       DB_USER: ${DB_USER:-postgres}
       DB_PASS: ${DB_PASS:-postgres}
-      DB_HOST: db
+      DB_HOST: ${DB_HOST:-db}
       DB_PORT: "5432"
       DB_NAME: ${DB_NAME:-ecommerce}
       SMTP_USER: ${SMTP_USER}
@@ -85,11 +85,11 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3500/ || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3500/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   # ─── Database ─────────────────────────────────────────────────────────────────
   db:
