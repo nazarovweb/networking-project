@@ -33,7 +33,7 @@ variable "az" {
 # EC2
 variable "ec2_instance_type" {
   type    = string
-  default = "t3.micro"   # Free tier eligible in us-east-1
+  default = "t3.small"   # 2GB RAM — handles Next.js build
 }
 
 variable "key_pair_name" {

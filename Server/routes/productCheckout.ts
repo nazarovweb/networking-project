@@ -5,7 +5,9 @@ import {orderCreationSchema,orderCreationSchema2,checkoutSchema,OrderIDSchema,cr
 import { matchedData, validationResult } from 'express-validator';
 import { randomUUID } from 'crypto';
 const router = express.Router();
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
+  : null;
 function getDateTimeFiveDaysFromNow():string {
   const today = new Date();
   const fiveDaysFromNow = new Date(today);
