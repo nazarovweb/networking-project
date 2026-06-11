@@ -118,26 +118,26 @@ jobs:
       - name: Health check — Load Balancer
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            --max-time 15 "http://${{ secrets.EC2_HOST }}/health")
+            --max-time 15 "https://${{ secrets.DOMAIN }}/health")
           echo "LB health: HTTP $STATUS"
           [ "$STATUS" = "200" ] || exit 1
 
       - name: Health check — Frontend
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            --max-time 15 "http://${{ secrets.EC2_HOST }}/")
+            --max-time 15 "https://${{ secrets.DOMAIN }}/")
           echo "Frontend: HTTP $STATUS"
           [ "$STATUS" = "200" ] || exit 1
 
       - name: Health check — Backend API
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            --max-time 15 "http://${{ secrets.EC2_HOST }}/api/")
+            --max-time 15 "https://${{ secrets.DOMAIN }}/api/")
           echo "Backend API: HTTP $STATUS"
           [ "$STATUS" = "200" ] || exit 1
 
       - name: Deployment summary
         run: |
           echo "✓ Deployment of commit ${{ github.sha }} succeeded"
-          echo "  App URL: http://${{ secrets.EC2_HOST }}"
+          echo "  App URL: https://${{ secrets.DOMAIN }}"
           echo "  Time: $(date -u)"
