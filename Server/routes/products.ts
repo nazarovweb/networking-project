@@ -27,16 +27,15 @@ router.post('/product/create',createProductSchema,async (req:Request,res:Respons
     const result = validationResult(req);
     if(!result.isEmpty()) return res.status(400).json({ message: 'Validation error', errors: result.array() });
     const {title,description,price,discount,stock,tags,imgLink,imgAlt,isSale,isNew,isDiscount,categoryID} = matchedData(req);
-    const productQuery = `INSERT INTO products (productid, title, description, categoryid, price, discount, stock, tags, imgid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
-    const productImagesQuery = `INSERT INTO productimages (imageid, productid, imglink, imgalt, isprimary) VALUES ($1, $2, $3, $4, $5)`;
+    const productQuery = `INSERT INTO products (title, description, categoryid, price, discount, stock, tags) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING productid`;
+    const productImagesQuery = `INSERT INTO productimages (productid, imglink, imgalt, isprimary) VALUES ($1, $2, $3, $4)`;
     const productParamsQuery = `INSERT INTO productparams (productid, issale, isnew, isdiscount) VALUES ($1, $2, $3, $4)`;
-    const productID = randomUUID();
-    const imageID = randomUUID();
     try {
-        await client.query(productQuery,[productID,title,description,categoryID,price,discount,stock,tags,imageID]);
-        await client.query(productImagesQuery,[imageID,productID,imgLink,imgAlt,true]);
+        const productResult = await client.query(productQuery,[title,description,categoryID,price,discount,stock,tags]);
+        const productID = productResult.rows[0].productid;
+        await client.query(productImagesQuery,[productID,imgLink,imgAlt,true]);
         await client.query(productParamsQuery,[productID,isSale,isNew,isDiscount]);
-        return res.status(200).json({message:'Product Added Successfully'});
+        return res.status(200).json({message:'Product Added Successfully', productID});
     } catch (error) {
         return res.status(500).json({message:'Internal Server Error'});
     }
@@ -45,10 +44,9 @@ router.post('/product/create/image',createProductImageSchema,async (req:Request,
     const result = validationResult(req);
     if(!result.isEmpty()) return res.status(400).json({ message: 'Validation error', errors: result.array() });
     const {productID,imgLink,imgAlt} = matchedData(req);
-    const imageID = randomUUID();
-    const productImagesQuery = `INSERT INTO productimages (imageid, productid, imglink, imgalt, isprimary) VALUES ($1, $2, $3, $4, $5)`;
+    const productImagesQuery = `INSERT INTO productimages (productid, imglink, imgalt, isprimary) VALUES ($1, $2, $3, $4)`;
     try {
-        await client.query(productImagesQuery,[imageID,productID,imgLink,imgAlt,false]);
+        await client.query(productImagesQuery,[productID,imgLink,imgAlt,false]);
         res.status(200).json({message:'Image Added Successfully'});
     } catch (error) {
         res.status(500).json({message:'Internal Server Error'});
@@ -58,10 +56,9 @@ router.post('/product/create/size',createProductSizeSchema,async (req:Request,re
     const result = validationResult(req);
     if(!result.isEmpty()) return res.status(400).json({ message: 'Validation error', errors: result.array() });
     const {productID,sizeName,inStock} = matchedData(req);
-    const sizeID = randomUUID();
-    const productSizesQuery = `INSERT INTO productparams (sizeid,productid,sizename,instock) VALUES ($1, $2, $3, $4)`;
+    const productSizesQuery = `INSERT INTO productsizes (productid, sizename, instock) VALUES ($1, $2, $3)`;
     try {
-        await client.query(productSizesQuery,[sizeID,productID,sizeName,inStock]);
+        await client.query(productSizesQuery,[productID,sizeName,inStock]);
         res.status(200).json({message:'Size Added Successfully'});
     } catch (error) {
         res.status(500).json({message:'Internal Server Error'});
@@ -71,10 +68,9 @@ router.post('/product/create/color',createProductColorSchema,async (req:Request,
     const result = validationResult(req);
     if(!result.isEmpty()) return res.status(400).json({ message: 'Validation error', errors: result.array() });
     const {productID,colorName,colorClass} = matchedData(req);
-    const colorID = randomUUID();
-    const productColorsQuery = `INSERT INTO productcolors (colorid, productid, colorname, colorclass) VALUES ($1, $2, $3, $4)`;
+    const productColorsQuery = `INSERT INTO productcolors (productid, colorname, colorclass) VALUES ($1, $2, $3)`;
     try {
-        await client.query(productColorsQuery,[colorID,productID,colorName,colorClass]);
+        await client.query(productColorsQuery,[productID,colorName,colorClass]);
         res.status(200).json({message:'Color Added Successfully'});
     } catch (error) {
         res.status(500).json({message:'Internal Server Error'});
@@ -203,9 +199,8 @@ router.post('/review/create',createReviewSchema,async (req:Request,res:Response)
         } catch (error) {
             return res.status(500).json({error:'Server Error'});
         }
-        const reviewID = randomUUID();
-        const query = `INSERT INTO reviews (reviewid,userid,productid,rating,title,comment) VALUES ($1,$2,$3,$4,$5,$6)`;
-        const value = [reviewID,userID,productID,rating,title,comment];
+        const query = `INSERT INTO reviews (userid,productid,rating,title,comment) VALUES ($1,$2,$3,$4,$5)`;
+        const value = [userID,productID,rating,title,comment];
         try {
             await client.query(query,value);
             await calculateStarAverage(productID);

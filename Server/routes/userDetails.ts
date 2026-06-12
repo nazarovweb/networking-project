@@ -159,7 +159,7 @@ router.post('/user/cart-items',userIDSchema, async (req: Request, res: Response)
         res.status(500).json({ message: 'Validation error' });
     }
 });
-router.post('/user/wishlist-items',async (req: Request, res: Response) => {
+router.post('/user/wishlist-items',userIDSchema, async (req: Request, res: Response) => {
     const result = validationResult(req);
     if(result.isEmpty()){
         const { userID } = matchedData(req);
@@ -246,10 +246,9 @@ router.post('/user/insert/address',AddressInsertSchema,async(req:Request,res:Res
     const result = validationResult(req);
     if(result.isEmpty()){
         const {userID,addressType,userName,contactNumber,addressLine1,addressLine2,city,state,country,postalCode} = matchedData(req);
-        const addressID = randomUUID();
-        const query = `INSERT INTO addresses(addressid,userid,addresstype,username,contactnumber,addressline1,addressline2,city,state,country,postalcode,is_default)
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,false)`
-        const values = [addressID,userID,addressType,userName,contactNumber,addressLine1,addressLine2,city,state,country,postalCode];
+        const query = `INSERT INTO addresses(userid,addresstype,username,contactnumber,addressline1,addressline2,city,state,country,postalcode,is_default)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,false)`
+        const values = [userID,addressType,userName,contactNumber,addressLine1,addressLine2,city,state,country,postalCode];
         try {
             await client.query(query,values);
             res.status(200).json({message:'Address added Successfully'})
@@ -294,20 +293,19 @@ router.post('/user/insert/cartitem',cartItemSchema,async(req:Request,res:Respons
     const result = validationResult(req);
     if(result.isEmpty()){
         const { userID, productID, quantity, sizeID, colorID } = matchedData(req);
-        const cartItemID = randomUUID();
-        
+
         const checkQuery = `
-            SELECT cartitemid, quantity 
-            FROM cartitems 
+            SELECT cartitemid, quantity
+            FROM cartitems
             WHERE userid = $1 AND productid = $2 AND sizeid = $3 AND colorid = $4
         `;
         const checkValues = [userID, productID, sizeID, colorID];
-    
+
         const insertQuery = `
-            INSERT INTO cartitems (cartitemid, userid, productid, quantity, sizeid, colorid) 
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO cartitems (userid, productid, quantity, sizeid, colorid)
+            VALUES ($1, $2, $3, $4, $5)
         `;
-        const insertValues = [cartItemID, userID, productID, quantity, sizeID, colorID];
+        const insertValues = [userID, productID, quantity, sizeID, colorID];
     
         const updateQuery = `
             UPDATE cartitems 
@@ -358,20 +356,20 @@ router.delete('/user/delete/cartitem',cartActionSchema,async(req:Request,res:Res
 router.post('/user/insert/wishlistitem',wishlistActionSchema,async(req:Request,res:Response)=>{
     const result = validationResult(req);
     if(result.isEmpty()){
-        const { userID, wishlistItemID, productID } = matchedData(req);
-    
+        const { userID, productID } = matchedData(req);
+
         const checkQuery = `
-            SELECT wishlistitemid 
-            FROM wishlistitems 
+            SELECT wishlistitemid
+            FROM wishlistitems
             WHERE userid = $1 AND productid = $2
         `;
         const checkValues = [userID, productID];
-    
+
         const insertQuery = `
-            INSERT INTO wishlistitems (wishlistitemid, userid, productid) 
-            VALUES ($1, $2, $3)
+            INSERT INTO wishlistitems (userid, productid)
+            VALUES ($1, $2)
         `;
-        const insertValues = [wishlistItemID, userID, productID];
+        const insertValues = [userID, productID];
     
         try {
             const checkResult = await client.query(checkQuery, checkValues);

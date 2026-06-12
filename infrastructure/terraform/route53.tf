@@ -3,14 +3,14 @@
 # Demonstrates A.P2: how DNS underpins cloud network communication.
 # ─────────────────────────────────────────────────────────────────────────────
 
-data "aws_route53_zone" "main" {
-  name         = var.domain_name
-  private_zone = false
+resource "aws_route53_zone" "main" {
+  name = var.domain_name
+  tags = { Name = "${var.project_name}-zone" }
 }
 
 # Apex domain → ALB (ALIAS record, no TTL cost)
 resource "aws_route53_record" "apex" {
-  zone_id = data.aws_route53_zone.main.zone_id
+  zone_id = aws_route53_zone.main.zone_id
   name    = var.domain_name
   type    = "A"
 
@@ -23,7 +23,7 @@ resource "aws_route53_record" "apex" {
 
 # www → ALB
 resource "aws_route53_record" "www" {
-  zone_id = data.aws_route53_zone.main.zone_id
+  zone_id = aws_route53_zone.main.zone_id
   name    = "www.${var.domain_name}"
   type    = "A"
 
@@ -36,7 +36,7 @@ resource "aws_route53_record" "www" {
 
 # api subdomain → ALB (resolves /api/* via listener rule)
 resource "aws_route53_record" "api" {
-  zone_id = data.aws_route53_zone.main.zone_id
+  zone_id = aws_route53_zone.main.zone_id
   name    = "api.${var.domain_name}"
   type    = "A"
 

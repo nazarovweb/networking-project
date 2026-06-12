@@ -21,6 +21,10 @@ function getAuthenticatedUserID(req: Request): number | null {
         return null;
     }
 }
+function checkAuth(authenticatedID: number | null, requestedID: any): boolean {
+    if (!authenticatedID) return false;
+    return authenticatedID === parseInt(String(requestedID), 10);
+}
 
 
 // Update user route
@@ -30,7 +34,7 @@ router.put('/user',userUpdateSchema, async (req: Request, res: Response) => {
         const { userName, email, password, mobile_number, dob, userID } = matchedData(req);
 
         const authenticatedUserID = getAuthenticatedUserID(req);
-        if (!authenticatedUserID || authenticatedUserID !== userID) {
+        if (!checkAuth(authenticatedUserID, userID)) {
             return res.status(403).json({ error: 'Forbidden' });
         }
 
@@ -94,7 +98,7 @@ router.put('/user/update/address',AddressUpdateSchema, async (req: Request, res:
         const { userID, addressID, addressType, contactNumber, addressLine1, addressLine2, city, state, country, postalCode, userName } = matchedData(req);
 
         const authenticatedUserID = getAuthenticatedUserID(req);
-        if (!authenticatedUserID || authenticatedUserID !== userID) {
+        if (!checkAuth(authenticatedUserID, userID)) {
             return res.status(403).json({ error: 'Forbidden' });
         }
         const updateQuery = `
@@ -124,24 +128,24 @@ router.post('/user/insert/address',insertAddressSchema, async (req: Request, res
         const { addressType, contactNumber, addressLine1, addressLine2, city, state, country, postalCode, userName, userID } = matchedData(req);
 
         const authenticatedUserID = getAuthenticatedUserID(req);
-        if (!authenticatedUserID || authenticatedUserID !== userID) {
+        if (!checkAuth(authenticatedUserID, userID)) {
             return res.status(403).json({ error: 'Forbidden' });
         }
 
-        const addressID = randomUUID();
         let is_default = false;
         const insertQuery = `
-            INSERT INTO addresses (addresstype, userid, contactnumber, addressline1, addressline2, city, state, country, postalcode, username, addressid,is_default) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,$11,$12)
+            INSERT INTO addresses (addresstype, userid, contactnumber, addressline1, addressline2, city, state, country, postalcode, username, is_default)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            RETURNING addressid
         `;
         const checkQuery = `SELECT addressid FROM addresses WHERE userid = $1`;
-    
+
         try {
             const response = await client.query(checkQuery,[userID]);
             if(response.rows.length===0) is_default=true;
-            const values = [addressType, userID, contactNumber, addressLine1, addressLine2, city, state, country, postalCode, userName,addressID,is_default];
-            await client.query(insertQuery, values);
-            res.status(200).json({ message: 'Address added successfully',addressid:addressID });
+            const values = [addressType, userID, contactNumber, addressLine1, addressLine2, city, state, country, postalCode, userName, is_default];
+            const inserted = await client.query(insertQuery, values);
+            res.status(200).json({ message: 'Address added successfully', addressid: inserted.rows[0].addressid });
         } catch (error) {
             res.status(500).json({ message: 'Internal Server Error' });
         }
@@ -159,7 +163,7 @@ router.delete('/user/delete/address',defaultUpdateSchema, async (req: Request, r
         const { addressID, userID } = matchedData(req);
 
         const authenticatedUserID = getAuthenticatedUserID(req);
-        if (!authenticatedUserID || authenticatedUserID !== userID) {
+        if (!checkAuth(authenticatedUserID, userID)) {
             return res.status(403).json({ error: 'Forbidden' });
         }
 
@@ -192,7 +196,7 @@ router.post('/user/set-default-address',defaultUpdateSchema, async (req:Request,
         const { addressID, userID } = matchedData(req);
 
         const authenticatedUserID = getAuthenticatedUserID(req);
-        if (!authenticatedUserID || authenticatedUserID !== userID) {
+        if (!checkAuth(authenticatedUserID, userID)) {
             return res.status(403).json({ error: 'Forbidden' });
         }
 

@@ -192,17 +192,7 @@ const wishlistActionSchema = checkSchema({
     userID: {
         in: ['body'],
         isInt:true,
-        errorMessage: 'The wishlist item id must be provided',
-        isLength:{options:{min:1,max:10}},
-        notEmpty:true,
-        isNumeric:true,
-        trim:true,
-        escape:true
-    },
-    wishlistItemID: {
-        in: ['body'],
-        isInt:true,
-        errorMessage: 'The wishlist item id must be provided',
+        errorMessage: 'The userID must be provided',
         isLength:{options:{min:1,max:10}},
         notEmpty:true,
         isNumeric:true,

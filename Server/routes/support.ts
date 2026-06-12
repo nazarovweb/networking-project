@@ -9,10 +9,10 @@ router.post('/contact',contactSchema,async (req:Request,res:Response)=>{
     const result = validationResult(req);
     if(result.isEmpty()){
         const {name,email,phone,method,message} = matchedData(req);
-        const queryID = randomUUID();
         const date = new Date().toUTCString();
         try {
-            await client.query(`INSERT INTO contact_queries(queryid,name,email,number,method,message) VALUES ($1,$2,$3,$4,$5,$6)`,[queryID,name,email,phone,method,message])
+            const queryRes = await client.query(`INSERT INTO contact_queries(name,email,number,method,message) VALUES ($1,$2,$3,$4,$5) RETURNING queryid`,[name,email,phone,method,message]);
+            const queryID = queryRes.rows[0].queryid;
             await SMTP.sendMail({
                 from: process.env.SMTP_USER,
                 to: process.env.SMTP_SUPPORT,

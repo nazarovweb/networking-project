@@ -27,16 +27,10 @@ router.post('/payment-on-delivery/create-order',orderCreationSchema, async (req:
   if(result.isEmpty()){
     const { userid, productid, colorid, sizeid} = matchedData(req);
 
-    const orderid = randomUUID();
-    const shippingid = randomUUID();
-    const paymentid = randomUUID();
-    const transactionid = `TS-${randomUUID()}`;
-    const orderitemid = randomUUID();
-    const trackingnumber = `IN-${orderid}`;
     const deliveryDate = getDateTimeFiveDaysFromNow();
     const paymentCharge = 15;
+    const shippingcharge = 5;
     try {
-      // Check if product with given productid, colorid, and sizeid exists
       const productQuery = `
         SELECT p.discount
         FROM products p
@@ -49,9 +43,7 @@ router.post('/payment-on-delivery/create-order',orderCreationSchema, async (req:
       if (productResult.rows.length === 0) {
         return res.status(404).json({ error: 'Product not found' });
       }
-      const addressQuery = `
-        SELECT addressid FROM addresses WHERE userid = $1 AND is_default = true
-      `;
+      const addressQuery = `SELECT addressid FROM addresses WHERE userid = $1 AND is_default = true`;
       const addressResult = await client.query(addressQuery, [userid]);
 
       if (addressResult.rows.length === 0) {
@@ -59,27 +51,31 @@ router.post('/payment-on-delivery/create-order',orderCreationSchema, async (req:
       }
       const addressid = addressResult.rows[0].addressid;
       const amount = productResult.rows[0].discount;
-      const shippingcharge = 5;
       const totalAmount = (shippingcharge+paymentCharge+parseFloat(amount)).toFixed(2);
 
       const conn = await client.connect();
       try {
         await conn.query('BEGIN');
-        await conn.query(
-          `INSERT INTO orders (orderid, userid, totalamount, orderstatus, order_code) VALUES ($1, $2, $3, $4, $5)`,
-          [orderid, userid, totalAmount, 'Confirmed', 'IN']
+        const orderRes = await conn.query(
+          `INSERT INTO orders (userid, totalamount, orderstatus, order_code) VALUES ($1, $2, $3, $4) RETURNING orderid`,
+          [userid, totalAmount, 'Confirmed', 'IN']
         );
-        await conn.query(
-          `INSERT INTO shipping (shippingid, orderid, addressid, shippingmethod, shippingcost, trackingnumber, deliveredat) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [shippingid, orderid, addressid, 'Express', shippingcharge, trackingnumber, deliveryDate]
+        const orderid = orderRes.rows[0].orderid;
+        const trackingnumber = `IN-${orderid}`;
+        const transactionid = `TS-${orderid}-${Date.now()}`;
+        const shipRes = await conn.query(
+          `INSERT INTO shipping (orderid, addressid, shippingmethod, shippingcost, trackingnumber, deliveredat) VALUES ($1, $2, $3, $4, $5, $6) RETURNING shippingid`,
+          [orderid, addressid, 'Express', shippingcharge, trackingnumber, deliveryDate]
         );
-        await conn.query(
-          `INSERT INTO payments (paymentid, orderid, paymentmethod, paymentstatus, amount, transactionid, billingaddress) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [paymentid, orderid, 'Payment on Delivery', 'Pending', amount, transactionid, addressid]
+        const shippingid = shipRes.rows[0].shippingid;
+        const payRes = await conn.query(
+          `INSERT INTO payments (orderid, paymentmethod, paymentstatus, amount, transactionid, billingaddress) VALUES ($1, $2, $3, $4, $5, $6) RETURNING paymentid`,
+          [orderid, 'Payment on Delivery', 'Pending', amount, transactionid, addressid]
         );
+        const paymentid = payRes.rows[0].paymentid;
         await conn.query(
-          `INSERT INTO orderitems (orderitemid, orderid, productid, quantity, shippingid, paymentid, colorid, sizeid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [orderitemid, orderid, productid, 1, shippingid, paymentid, colorid, sizeid]
+          `INSERT INTO orderitems (orderid, productid, quantity, shippingid, paymentid, colorid, sizeid) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [orderid, productid, 1, shippingid, paymentid, colorid, sizeid]
         );
         await conn.query(`UPDATE productparams SET sold = sold + 1 WHERE productid = $1`, [productid]);
         await conn.query('COMMIT');
@@ -107,16 +103,9 @@ router.post('/card/create-order',orderCreationSchema2, async (req:Request, res:R
   if(result.isEmpty()){
     const { userid, productid, colorid, sizeid, paymentid , paymentStatus} = matchedData(req);
     const paymentState = paymentStatus==='Succeeded' ? 'Confirmed' : 'Pending';
-    const orderid = randomUUID();
-    const paymentID = randomUUID();
-    const shippingid = randomUUID();
-    const transactionid = `TS-${randomUUID()}`;
-    const orderitemid = randomUUID();
-    const trackingnumber = `IN-${orderid}`;
     const deliveryDate = getDateTimeFiveDaysFromNow();
     const shippingcharge = 5;
     try {
-      // Check if product with given productid, colorid, and sizeid exists
       const productQuery = `
         SELECT p.discount
         FROM products p
@@ -129,9 +118,7 @@ router.post('/card/create-order',orderCreationSchema2, async (req:Request, res:R
       if (productResult.rows.length === 0) {
         return res.status(404).json({ error: 'Product not found' });
       }
-      const addressQuery = `
-        SELECT addressid FROM addresses WHERE userid = $1 AND is_default = true
-      `;
+      const addressQuery = `SELECT addressid FROM addresses WHERE userid = $1 AND is_default = true`;
       const addressResult = await client.query(addressQuery, [userid]);
 
       if (addressResult.rows.length === 0) {
@@ -144,21 +131,26 @@ router.post('/card/create-order',orderCreationSchema2, async (req:Request, res:R
       const conn = await client.connect();
       try {
         await conn.query('BEGIN');
-        await conn.query(
-          `INSERT INTO orders (orderid, userid, totalamount, orderstatus, order_code) VALUES ($1, $2, $3, $4, $5)`,
-          [orderid, userid, totalAmount, 'Confirmed', 'IN']
+        const orderRes = await conn.query(
+          `INSERT INTO orders (userid, totalamount, orderstatus, order_code) VALUES ($1, $2, $3, $4) RETURNING orderid`,
+          [userid, totalAmount, 'Confirmed', 'IN']
         );
-        await conn.query(
-          `INSERT INTO shipping (shippingid, orderid, addressid, shippingmethod, shippingcost, trackingnumber, deliveredat) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [shippingid, orderid, addressid, 'Express', shippingcharge, trackingnumber, deliveryDate]
+        const orderid = orderRes.rows[0].orderid;
+        const trackingnumber = `IN-${orderid}`;
+        const transactionid = `TS-${orderid}-${Date.now()}`;
+        const shipRes = await conn.query(
+          `INSERT INTO shipping (orderid, addressid, shippingmethod, shippingcost, trackingnumber, deliveredat) VALUES ($1, $2, $3, $4, $5, $6) RETURNING shippingid`,
+          [orderid, addressid, 'Express', shippingcharge, trackingnumber, deliveryDate]
         );
-        await conn.query(
-          `INSERT INTO payments (paymentid, orderid, paymentmethod, paymentstatus, amount, transactionid, billingaddress, paymentgateway_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [paymentID, orderid, 'Card', paymentState, amount, transactionid, addressid, paymentid]
+        const shippingid = shipRes.rows[0].shippingid;
+        const payRes = await conn.query(
+          `INSERT INTO payments (orderid, paymentmethod, paymentstatus, amount, transactionid, billingaddress, paymentgateway_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING paymentid`,
+          [orderid, 'Card', paymentState, amount, transactionid, addressid, paymentid]
         );
+        const paymentID = payRes.rows[0].paymentid;
         await conn.query(
-          `INSERT INTO orderitems (orderitemid, orderid, productid, quantity, shippingid, paymentid, colorid, sizeid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [orderitemid, orderid, productid, 1, shippingid, paymentID, colorid, sizeid]
+          `INSERT INTO orderitems (orderid, productid, quantity, shippingid, paymentid, colorid, sizeid) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [orderid, productid, 1, shippingid, paymentID, colorid, sizeid]
         );
         await conn.query(`UPDATE productparams SET sold = sold + 1 WHERE productid = $1`, [productid]);
         await conn.query('COMMIT');

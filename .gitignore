@@ -45,6 +45,7 @@ next-env.d.ts
 
 # Terraform
 infrastructure/terraform-free-tier/terraform.tfvars
+infrastructure/terraform/terraform.tfvars
 infrastructure/terraform-free-tier/.terraform/
 infrastructure/terraform-free-tier/terraform.tfstate
 infrastructure/terraform-free-tier/terraform.tfstate.backup
