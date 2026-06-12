@@ -105,7 +105,8 @@ jobs:
             cd /home/ubuntu/app
 
             echo "[1/4] Pulling latest code..."
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
 
             echo "[2/4] Rebuilding and restarting containers..."
             docker compose build --no-cache
