@@ -109,6 +109,7 @@ jobs:
             git reset --hard origin/main
 
             echo "[2/4] Rebuilding and restarting containers..."
+            docker compose down
             docker compose build --no-cache
             docker compose up -d
 
