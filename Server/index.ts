@@ -23,6 +23,9 @@ const corsOptions = {
 };
 app.use(express.urlencoded({ extended: false }));
 app.use(cors(corsOptions));
+app.get('/health', (_req: Request, res: Response) => {
+  res.status(200).json({ status: 'ok' });
+});
 app.use(authenticateToken);
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({ message: 'Success' });

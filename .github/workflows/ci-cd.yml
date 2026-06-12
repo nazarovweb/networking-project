@@ -146,7 +146,7 @@ jobs:
       - name: Health check — Backend API
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            --max-time 15 "https://${{ secrets.DOMAIN }}/api/")
+            --max-time 15 "https://${{ secrets.DOMAIN }}/health")
           echo "Backend API: HTTP $STATUS"
           [ "$STATUS" = "200" ] || exit 1
 
