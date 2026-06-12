@@ -20,7 +20,7 @@ on:
 jobs:
   # ─── Stage 1: Test ────────────────────────────────────────────────────────
   test:
-    name: Lint & Type Check
+    name: Lint, Type Check & Unit Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -49,6 +49,18 @@ jobs:
       - name: TypeScript check — backend
         working-directory: ./Server
         run: npx tsc --noEmit
+
+      - name: Unit tests — frontend (Redux slices & components)
+        working-directory: ./Client
+        run: npm test
+
+      - name: Unit tests — backend (API routes with mocked DB)
+        working-directory: ./Server
+        env:
+          JWT_ENCRYPTION_KEY: ci-jwt-secret-key-for-testing-only
+          API_SECRET: ci-api-secret
+          FRONTEND_SERVER_ORIGIN: http://localhost:3000
+        run: npm test
 
   # ─── Stage 2: Build (on main branch only) ─────────────────────────────────
   build:
