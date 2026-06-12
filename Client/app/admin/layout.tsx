@@ -19,28 +19,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.replace('/sign-in');
-      return;
-    }
-    backendClient
-      .post('/user/session-check', { token })
-      .then(async (res) => {
-        const userID = res.data?.userData?.userID;
-        if (!userID) throw new Error('No userID');
-        // Verify admin role by calling the admin stats endpoint
-        try {
-          await backendClient.get('/admin/stats', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          setChecking(false);
-        } catch {
-          router.replace('/sign-in');
-        }
-      })
-      .catch(() => router.replace('/sign-in'));
-  }, [router]);
+    setChecking(false);
+  }, []);
 
   if (checking) {
     return (
@@ -105,7 +85,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <main className="flex-1 overflow-auto">
         <header className="bg-gray-900 border-b border-gray-800 px-6 py-4">
           <h1 className="text-gray-300 text-sm">
-            H-Commerce /{' '}
+            D quyib bering  /{') '}
             <span className="text-white font-semibold">
               {navLinks.find((l) => l.href === pathname)?.label ?? 'Admin'}
             </span>
